@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+</head>
+<body>
+	<output id="result"></output>
+	<script type="module">
+		import { add } from "./build/debug.js";
+		document.querySelector("#result").textContent = String(add(1, 2));
+	</script>
+</body>
+</html>
