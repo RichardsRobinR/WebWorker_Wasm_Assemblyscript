@@ -1,14 +1,14 @@
 {
   "targets": {
     "debug": {
-      "outFile": "build/debug.wasm",
-      "textFile": "build/debug.wat",
+      "outFile": "../WebWorkerWasmAssemblyscript/src/wasm/debug.wasm",
+      "textFile": "../WebWorkerWasmAssemblyscript/src/wasm/debug.wat",
       "sourceMap": true,
       "debug": true
     },
     "release": {
-      "outFile": "build/release.wasm",
-      "textFile": "build/release.wat",
+      "outFile": "../WebWorkerWasmAssemblyscript/src/wasm/release.wasm",
+      "textFile": "../WebWorkerWasmAssemblyscript/src/wasm/release.wat",
       "sourceMap": true,
       "optimizeLevel": 3,
       "shrinkLevel": 0,

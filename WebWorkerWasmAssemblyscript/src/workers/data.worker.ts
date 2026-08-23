@@ -1,3 +1,5 @@
+import { add } from "../wasm/debug.js";
+
 let largeDataset: Float64Array | null = null;
 
 self.onmessage = async (event: MessageEvent) => {
@@ -11,7 +13,7 @@ self.onmessage = async (event: MessageEvent) => {
             largeDataset = new Float64Array(rowCount);
             
             for (let i = 0; i < rowCount; i++) {
-                largeDataset[i] = i % 1000; // Mock data
+                largeDataset[i] = add(i, i); // Mock data
             }
 
             self.postMessage({ 
