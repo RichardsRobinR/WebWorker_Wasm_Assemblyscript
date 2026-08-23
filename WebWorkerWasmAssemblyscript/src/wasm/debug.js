@@ -45,3 +45,4 @@ export const {
   })(), {
   }
 ))(new URL("debug.wasm", import.meta.url));
+
