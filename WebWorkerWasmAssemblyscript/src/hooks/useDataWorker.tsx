@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useCallback } from "react";
 
 export interface WorkerResponse<T = unknown> {
     id?: string;
@@ -17,53 +17,64 @@ export interface RowsResultPayload {
 
 type WorkerCallback = (response: WorkerResponse<unknown>) => void;
 
-export function useDataWorker() {
-    const workerRef = useRef<Worker | null>(null);
-    const callbacksRef = useRef<Map<string, WorkerCallback>>(new Map());
+// ⚡ Singleton Preloaded Worker and Callback Registry
+let workerInstance: Worker | null = null;
+const callbacks = new Map<string, WorkerCallback>();
 
-    useEffect(() => {
-        const worker = new Worker(
+// Preload & singleton getter
+export function getPreloadedWorker(): Worker {
+    if (!workerInstance) {
+        workerInstance = new Worker(
             new URL("../workers/data.worker.ts", import.meta.url),
             { type: "module" }
         );
 
-        worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+        workerInstance.onmessage = (event: MessageEvent<WorkerResponse>) => {
             const { id, type, payload, error } = event.data;
-            
-            // Resolve the specific promise that requested this data
             if (id) {
-                const resolveCallback = callbacksRef.current.get(id);
+                const resolveCallback = callbacks.get(id);
                 if (resolveCallback) {
                     resolveCallback({ type, payload, error });
-                    callbacksRef.current.delete(id);
+                    callbacks.delete(id);
                 }
             }
         };
 
-        workerRef.current = worker;
-
-        return () => {
-            worker.terminate();
-            workerRef.current = null;
+        workerInstance.onerror = (error) => {
+            console.error("Preloaded Worker Error:", error);
         };
-    }, []);
+    }
+    return workerInstance;
+}
 
-    // Helper to send a message and wait for its specific reply
-    const sendMessage = useCallback(<T = unknown>(type: string, payload?: unknown): Promise<WorkerResponse<T> | null> => {
-        return new Promise<WorkerResponse<T> | null>((resolve) => { 
-            if (!workerRef.current) return resolve(null);
+// ⚡ Preload function called at app launch
+export const preloadWorker = (): void => {
+    getPreloadedWorker();
+};
 
-            const id = crypto.randomUUID(); // Unique ID for this request
-            callbacksRef.current.set(id, resolve as WorkerCallback);
-            
-            workerRef.current.postMessage({ id, type, payload });
-        });
-    }, []);
+// Generic request-response message helper
+export function sendWorkerMessage<T = unknown>(
+    type: string, 
+    payload?: unknown
+): Promise<WorkerResponse<T> | null> {
+    return new Promise<WorkerResponse<T> | null>((resolve) => {
+        const worker = getPreloadedWorker();
+        const id = crypto.randomUUID();
+        callbacks.set(id, resolve as WorkerCallback);
+        worker.postMessage({ id, type, payload });
+    });
+}
+
+// React Hook wrapping the preloaded worker service
+export function useDataWorker() {
+    const loadData = useCallback(() => sendWorkerMessage<LoadDataPayload>("LOAD_DATA"), []);
+    const getRows = useCallback((start: number, end: number) => 
+        sendWorkerMessage<RowsResultPayload>("GET_ROWS", { start, end }), []);
+    const getAggregations = useCallback(() => sendWorkerMessage("GET_AGGREGATIONS"), []);
 
     return {
-        loadData: () => sendMessage<LoadDataPayload>("LOAD_DATA"),
-        getRows: (start: number, end: number) => 
-            sendMessage<RowsResultPayload>("GET_ROWS", { start, end }),
-        getAggregations: () => sendMessage("GET_AGGREGATIONS")
+        loadData,
+        getRows,
+        getAggregations
     };
 }
