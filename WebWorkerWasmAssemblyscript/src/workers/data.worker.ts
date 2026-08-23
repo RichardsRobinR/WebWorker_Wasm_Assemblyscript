@@ -4,21 +4,22 @@ import type * as WasmModule from "../wasm/debug";
 let largeDataset: Float64Array | null = null;
 let wasm: typeof WasmModule;
 
-// Initialize WASM inside the worker reliably
+// Modern WebAssembly streaming compilation & instantiation
 const wasmReady = (async () => {
     try {
-        const response = await fetch(wasmUrl);
-        const buffer = await response.arrayBuffer();
-        const { instance } = await WebAssembly.instantiate(buffer, {
-            env: {
-                abort: () => {},
-                "console.log": () => {},
+        const { instance } = await WebAssembly.instantiateStreaming(
+            fetch(wasmUrl),
+            {
+                env: {
+                    abort: () => {},
+                    "console.log": () => {},
+                }
             }
-        });
+        );
         
         wasm = instance.exports as unknown as typeof WasmModule;
     } catch (err) {
-        console.error("Worker WASM Load Error:", err);
+        console.error("Worker WASM instantiateStreaming Error:", err);
     }
 })();
 
